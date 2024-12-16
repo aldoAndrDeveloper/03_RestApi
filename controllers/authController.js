@@ -37,46 +37,55 @@ exports.signup = async (req, resp) => {
     }catch(error){
         console.log(error);
     }
+};
 
-
-    exports.signin = async (req, resp) => {
-        const {email, passwoord} = req.body;
-
-        try{
-            const {error, value} = signinSchema.validate ({email, password});
-            if (error){
-                return resp.status(401).json({success:false, message: error.details[0].message});
+    exports.signin = async (req, res) => {
+        const { email, password } = req.body;
+        try {
+            const { error, value } = signinSchema.validate({ email, password });
+            if (error) {
+                return res
+                    .status(401)
+                    .json({ success: false, message: error.details[0].message });
             }
-            
-            const existingUser = await Users.findOne({email}).select('+password');
-
-            if(!existingUser){
-                return resp.status(401).json({success:false, message: 'User does not exists'});
+    
+            const existingUser = await User.findOne({ email }).select('+password');
+            if (!existingUser) {
+                return res
+                    .status(401)
+                    .json({ success: false, message: 'User does not exists!' });
             }
-
-            const result = await doHashValidation (password, existingUser.password)
-            if(!result){
-                return resp.status(401).json({success:false, message: 'Invalid credentials'});
+            const result = await doHashValidation(password, existingUser.password);
+            if (!result) {
+                return res
+                    .status(401)
+                    .json({ success: false, message: 'Invalid credentials!' });
             }
-
             const token = jwt.sign(
                 {
-                userId: existingUser._id,
-                email: existingUser.email,
-                verified: existingUser.verified 
-                }, 
-                process.env.TOKEN_SECRET)
-
-                resp.cookie('Authorization', 'Bearer' + token, {expires: new Date(Date.now + 8 * 36000000), httpOnly:process.env.NODE_ENV === 'production', secure:process.env.NODE_ENV === 'production'})
+                    userId: existingUser._id,
+                    email: existingUser.email,
+                    verified: existingUser.verified,
+                },
+                process.env.TOKEN_SECRET,
+                {
+                    expiresIn: '8h',
+                }
+            );
+    
+            res
+                .cookie('Authorization', 'Bearer ' + token, {
+                    expires: new Date(Date.now() + 8 * 3600000),
+                    httpOnly: process.env.NODE_ENV === 'production',
+                    secure: process.env.NODE_ENV === 'production',
+                })
                 .json({
                     success: true,
                     token,
-                    message:'Login success'
+                    message: 'logged in successfully',
                 });
-
-        }catch(err){
+        } catch (error) {
             console.log(error);
         }
-    
-    }
-}
+    };
+            
