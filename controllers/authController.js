@@ -1,12 +1,12 @@
-const { signupSchema } = require("../middlewares/validator");
+const { signupSchema, signinSchema } = require("../middlewares/validator");
 const Users = require("../models/usersModel");
-const { doHash } = require("../utils/hashing");
+const { doHash, doHashValidation } = require("../utils/hashing");
+const jwt = require ("jsonwebtoken");
 
 exports.signup = async (req, resp) => {
     resp.json({message: 'signup succces'});
     const {email, password} = req.body;
     try{
-
         const {error, value} = signupSchema.validate({email,password})
 
         if(error){
@@ -38,4 +38,45 @@ exports.signup = async (req, resp) => {
         console.log(error);
     }
 
+
+    exports.signin = async (req, resp) => {
+        const {email, passwoord} = req.body;
+
+        try{
+            const {error, value} = signinSchema.validate ({email, password});
+            if (error){
+                return resp.status(401).json({success:false, message: error.details[0].message});
+            }
+            
+            const existingUser = await Users.findOne({email}).select('+password');
+
+            if(!existingUser){
+                return resp.status(401).json({success:false, message: 'User does not exists'});
+            }
+
+            const result = await doHashValidation (password, existingUser.password)
+            if(!result){
+                return resp.status(401).json({success:false, message: 'Invalid credentials'});
+            }
+
+            const token = jwt.sign(
+                {
+                userId: existingUser._id,
+                email: existingUser.email,
+                verified: existingUser.verified 
+                }, 
+                process.env.TOKEN_SECRET)
+
+                resp.cookie('Authorization', 'Bearer' + token, {expires: new Date(Date.now + 8 * 36000000), httpOnly:process.env.NODE_ENV === 'production', secure:process.env.NODE_ENV === 'production'})
+                .json({
+                    success: true,
+                    token,
+                    message:'Login success'
+                });
+
+        }catch(err){
+            console.log(error);
+        }
+    
+    }
 }
