@@ -49,7 +49,7 @@ exports.signup = async (req, resp) => {
                     .json({ success: false, message: error.details[0].message });
             }
     
-            const existingUser = await User.findOne({ email }).select('+password');
+            const existingUser = await Users.findOne({ email }).select('+password');
             if (!existingUser) {
                 return res
                     .status(401)
